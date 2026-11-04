@@ -1,0 +1,46 @@
+# MIUI ads / telemetry
+com.miui.msa.global
+com.miui.analytics
+com.miui.daemon
+com.miui.bugreport
+com.miui.miservice
+com.xiaomi.discover
+com.miui.cleanmaster
+# Mi apps innecesarias
+com.mi.globalbrowser
+com.miui.videoplayer
+com.miui.player
+com.miui.yellowpage
+com.xiaomi.mipicks
+com.xiaomi.glgm
+com.miui.hybrid
+com.miui.hybrid.accessory
+com.miui.android.fashiongallery
+com.mi.global.bbs
+com.mi.global.shop
+com.micredit.in
+com.mipay.wallet.in
+com.xiaomi.payment
+com.miui.newmidrive
+com.miui.cloudservice
+com.miui.cloudbackup
+com.miui.micloudsync
+com.xiaomi.midrop
+com.xiaomi.miplay_client
+com.xiaomi.mi_connect_service
+com.miui.touchassistant
+com.miui.screenrecorder
+# Preloads terceros
+com.facebook.appmanager
+com.facebook.services
+com.facebook.system
+com.amazon.appmanager
+com.ebay.carrier
+cn.wps.xiaomi.abroad.lite
+# Google extra
+com.google.android.apps.subscriptions.red
+com.google.android.apps.podcasts
+com.google.android.videos
+com.google.android.apps.youtube.music
+com.google.android.apps.magazines
+com.google.ar.lens

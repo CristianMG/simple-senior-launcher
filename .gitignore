@@ -1,0 +1,15 @@
+# Private data — never commit
+backup/
+shots/
+*.apk
+*.png
+PLAN.md
+
+# Build / local
+local.properties
+.gradle/
+build/
+.idea/
+*.iml
+.DS_Store
+.kotlin/

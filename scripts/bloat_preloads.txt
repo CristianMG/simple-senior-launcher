@@ -1,0 +1,13 @@
+# Preloads EEA instaladas en el setup (24-12-2020), sin uso registrado. APKs en backup/apks/
+cn.wps.moffice_eng
+com.amazon.mShop.android.shopping
+com.facebook.katana
+com.ebay.mobile
+com.linkedin.android
+com.netflix.mediaclient
+com.alibaba.aliexpresshd
+com.mi.health
+com.google.android.apps.docs
+com.google.android.apps.tachyon
+com.google.android.apps.walletnfcrel
+com.google.android.apps.bard

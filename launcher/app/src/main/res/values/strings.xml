@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Inicio Papá</string>
+    <string name="guard_label">Guardián Inicio Papá</string>
+    <string name="guard_desc">Evita que se cambien los ajustes del teléfono por accidente.</string>
+</resources>
