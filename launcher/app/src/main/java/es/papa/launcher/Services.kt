@@ -51,6 +51,7 @@ class GuardService : AccessibilityService() {
         syncOverlay()
         val pkg = event.packageName?.toString() ?: return
         val cls = event.className?.toString().orEmpty()
+        if (pkg in INCALL_PKGS) CallState.onStockInCallShown(this)
         if (!Prefs.config.value.guardEnabled || Prefs.isAdmin) return
         if (pkg in BLOCKED && cls !in ALLOWED_CLASSES) {
             performGlobalAction(GLOBAL_ACTION_HOME)
@@ -111,6 +112,9 @@ class GuardService : AccessibilityService() {
             "com.google.android.packageinstaller",
             "com.miui.global.packageinstaller",
         )
+        /** Stock dialer / in-call UI packages whose call screen we cover with ours. */
+        val INCALL_PKGS = setOf("com.google.android.dialer", "com.android.incallui", "com.android.dialer", "com.android.server.telecom")
+
         /** Dialogs that must keep working (e.g. bluetooth pairing for car / headset). */
         val ALLOWED_CLASSES = setOf(
             "com.android.settings.bluetooth.BluetoothPairingDialog",

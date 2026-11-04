@@ -48,11 +48,11 @@ object CallState {
                 when (s) {
                     TelephonyManager.CALL_STATE_RINGING -> {
                         state.value = CallInfo(Phase.RINGING, num, System.currentTimeMillis())
-                        showScreen(app, 0, 700, 1600)
+                        showScreen(app, 0, 700, 1600, 2500, 4000)
                     }
                     TelephonyManager.CALL_STATE_OFFHOOK -> {
                         state.value = CallInfo(Phase.IN_CALL, num, System.currentTimeMillis())
-                        showScreen(app, 300, 1200)
+                        showScreen(app, 300, 1200, 2500)
                     }
                     else -> state.value = CallInfo()
                 }
@@ -61,6 +61,22 @@ object CallState {
         (app.getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager)
             .listen(l, PhoneStateListener.LISTEN_CALL_STATE)
         listener = l
+    }
+
+    private var lastFront = 0L
+
+    /**
+     * Called by [GuardService] when the stock in-call UI comes to the front (it arrives late,
+     * especially on the lock screen). Always while ringing; only during the first seconds of a
+     * call so the stock keypad stays reachable if it's ever needed (IVR menus).
+     */
+    fun onStockInCallShown(ctx: Context) {
+        val s = state.value
+        val now = System.currentTimeMillis()
+        val want = s.phase == Phase.RINGING || (s.phase == Phase.IN_CALL && now - s.since < 3000)
+        if (!want || now - lastFront < 250) return
+        lastFront = now
+        showScreen(ctx.applicationContext, 0, 400)
     }
 
     /** Re-launches a few times so it stays above the stock dialer screen. */

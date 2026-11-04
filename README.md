@@ -62,7 +62,7 @@ Media (DCIM, Pictures, WhatsApp incl. encrypted DB backups, Downloads), every us
 - If the person goes home during a call, a "Back to the call" button appears
 
 It does **not** replace the default dialer, which is less risky: if the launcher dies, the stock dialer still works. How it works:
-`AccessibilityService` (always running) → `PhoneStateListener` → starts `CallActivity` (`showWhenLocked`, `turnScreenOn`), re-launched a few times so it stays above the stock in-call UI. It answers and hangs up with `TelecomManager.acceptRingingCall()` / `endCall()` (`ANSWER_PHONE_CALLS`).
+`AccessibilityService` (always running) → `PhoneStateListener` → starts `CallActivity` (`showWhenLocked`, `turnScreenOn`), brought back to the front whenever the stock in-call UI appears (it arrives late on the lock screen, so the accessibility service watches for it) plus timed retries. It answers and hangs up with `TelecomManager.acceptRingingCall()` / `endCall()` (`ANSWER_PHONE_CALLS`).
 
 **Guardian (anti-accident)**
 - The `AccessibilityService` sends the user back home if Settings, MIUI Security, Digital Wellbeing, the Play Store or the package installer is opened. Bluetooth pairing dialogs are still allowed
