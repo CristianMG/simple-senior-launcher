@@ -68,6 +68,7 @@ adb shell dumpsys package es.papa.launcher | grep -E "(PHONE|CALL_LOG|CONTACTS).
 - Big call screen: ask someone to call, take a screenshot while it rings, and confirm `CallActivity` is resumed. The stock heads-up covers the top ~150 dp while ringing; that area is left empty on purpose.
 - Badges: send a WhatsApp → red dot. Missed call → red card in Phone → "seen" clears the dot.
 - The launcher must be the **default phone app** (role DIALER) so only its `InCallService` UI shows. Covering the stock dialer from outside caused a flicker war on the lock screen. Check with `adb shell dumpsys role | grep -A1 role.DIALER` (it must list `es.papa.launcher`). `cmd role add-role-holder` works but applies a few seconds later; `telecom set-default-dialer` is only a temporary override that makes `defaultDialerPackage` look right.
+- **After a reboot**, on MIUI `dumpsys role` may list the stock dialer again while `adb shell telecom get-default-dialer` returns the launcher. Telecom decides which call UI is used, so the real check is a call with the phone locked after rebooting. If the stock UI comes back, set it again from admin mode → *Default phone app* → Activate.
 - **Never reinstall during a call**: check `adb shell dumpsys telephony.registry | grep mCallState` (0 = idle).
 
 ## 6. Hand-off checklist for the family
