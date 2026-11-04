@@ -24,7 +24,14 @@ import java.util.Locale
 
 enum class Phase { IDLE, RINGING, IN_CALL }
 
-data class CallInfo(val phase: Phase = Phase.IDLE, val number: String = "", val since: Long = 0L)
+/** [connected] = false while an outgoing call is still dialing. */
+data class CallInfo(
+    val phase: Phase = Phase.IDLE,
+    val number: String = "",
+    val since: Long = 0L,
+    val connected: Boolean = true,
+    val speaker: Boolean = false,
+)
 
 data class CallEntry(val number: String, val name: String?, val type: Int, val date: Long)
 
@@ -35,7 +42,13 @@ object CallState {
     private var listener: PhoneStateListener? = null
     private val handler = Handler(Looper.getMainLooper())
 
-    /** Called from [GuardService] (always running) so the big call screen can show over everything. */
+    fun isDefaultDialer(ctx: Context): Boolean =
+        (ctx.getSystemService(Context.TELECOM_SERVICE) as TelecomManager).defaultDialerPackage == ctx.packageName
+
+    /**
+     * Fallback path used only when this app is NOT the default dialer: watch the phone state and
+     * cover the stock call UI. When we ARE the default dialer, [PapaInCallService] drives [state].
+     */
     @Suppress("DEPRECATION")
     fun start(ctx: Context) {
         if (listener != null) return
@@ -43,16 +56,17 @@ object CallState {
         val app = ctx.applicationContext
         val l = object : PhoneStateListener() {
             override fun onCallStateChanged(s: Int, number: String?) {
+                if (InCall.active) return
                 val prev = state.value
                 val num = number?.takeIf { it.isNotBlank() } ?: prev.number
                 when (s) {
                     TelephonyManager.CALL_STATE_RINGING -> {
                         state.value = CallInfo(Phase.RINGING, num, System.currentTimeMillis())
-                        showScreen(app, 0, 700, 1600, 2500, 4000)
+                        showScreen(app, 0, 700, 1600)
                     }
                     TelephonyManager.CALL_STATE_OFFHOOK -> {
                         state.value = CallInfo(Phase.IN_CALL, num, System.currentTimeMillis())
-                        showScreen(app, 300, 1200, 2500)
+                        showScreen(app, 300, 1200)
                     }
                     else -> state.value = CallInfo()
                 }
@@ -63,24 +77,7 @@ object CallState {
         listener = l
     }
 
-    private var lastFront = 0L
-
-    /**
-     * Called by [GuardService] when the stock in-call UI comes to the front (it arrives late,
-     * especially on the lock screen). Always while ringing; only during the first seconds of a
-     * call so the stock keypad stays reachable if it's ever needed (IVR menus).
-     */
-    fun onStockInCallShown(ctx: Context) {
-        val s = state.value
-        val now = System.currentTimeMillis()
-        val want = s.phase == Phase.RINGING || (s.phase == Phase.IN_CALL && now - s.since < 3000)
-        if (!want || now - lastFront < 250) return
-        lastFront = now
-        showScreen(ctx.applicationContext, 0, 400)
-    }
-
-    /** Re-launches a few times so it stays above the stock dialer screen. */
-    private fun showScreen(ctx: Context, vararg delays: Long) {
+    fun showScreen(ctx: Context, vararg delays: Long) {
         for (d in delays) handler.postDelayed({
             if (state.value.phase == Phase.IDLE) return@postDelayed
             runCatching {
@@ -96,6 +93,7 @@ object CallState {
 
     @SuppressLint("MissingPermission")
     fun answer(ctx: Context) {
+        if (InCall.answer()) return
         val tm = ctx.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
         if (granted(ctx, Manifest.permission.ANSWER_PHONE_CALLS)) runCatching { tm.acceptRingingCall() }
     }
@@ -103,6 +101,7 @@ object CallState {
     @SuppressLint("MissingPermission")
     @Suppress("DEPRECATION")
     fun hangUp(ctx: Context) {
+        if (InCall.hangUp()) return
         val tm = ctx.getSystemService(Context.TELECOM_SERVICE) as TelecomManager
         if (Build.VERSION.SDK_INT >= 28 && granted(ctx, Manifest.permission.ANSWER_PHONE_CALLS)) {
             runCatching { tm.endCall() }
@@ -111,12 +110,13 @@ object CallState {
 
     @Suppress("DEPRECATION")
     fun setSpeaker(ctx: Context, on: Boolean) {
+        if (InCall.setSpeaker(on)) return
         val am = ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager
         am.isSpeakerphoneOn = on
+        state.value = state.value.copy(speaker = on)
     }
 
-    @Suppress("DEPRECATION")
-    fun isSpeaker(ctx: Context) = (ctx.getSystemService(Context.AUDIO_SERVICE) as AudioManager).isSpeakerphoneOn
+    fun dtmf(c: Char) = InCall.dtmf(c)
 
     fun lookup(ctx: Context, number: String): Caller {
         if (number.isBlank() || !granted(ctx, Manifest.permission.READ_CONTACTS)) return Caller(null, 0)

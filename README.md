@@ -61,8 +61,16 @@ Media (DCIM, Pictures, WhatsApp incl. encrypted DB backups, Downloads), every us
 - In call: a huge **HANG UP** button, a speaker toggle and a timer. A proximity wake lock turns the screen off at the ear so the cheek can't hang up
 - If the person goes home during a call, a "Back to the call" button appears
 
-It does **not** replace the default dialer, which is less risky: if the launcher dies, the stock dialer still works. How it works:
-`AccessibilityService` (always running) → `PhoneStateListener` → starts `CallActivity` (`showWhenLocked`, `turnScreenOn`), brought back to the front whenever the stock in-call UI appears (it arrives late on the lock screen, so the accessibility service watches for it) plus timed retries. It answers and hangs up with `TelecomManager.acceptRingingCall()` / `endCall()` (`ANSWER_PHONE_CALLS`).
+It works by becoming the **default phone app**, with its own `InCallService` (`PapaInCallService`). Android then shows only our call screen, so it doesn't fight the stock dialer, which on the lock screen showed up 1–3 s later and caused flicker. That also gives:
+- a reliable speaker toggle (`setAudioRoute`)
+- an in-call **Keypad** (DTMF) for "press 1" menus
+- outgoing calls with "Calling…" → timer
+- emergency numbers from our keypad (`TelecomManager.placeCall`)
+- automatic SIM pick on dual-SIM phones
+
+If the service ever fails, Telecom falls back to the system dialer. When the app is *not* the default dialer, it still works in a fallback mode: a `PhoneStateListener` plus `TelecomManager.acceptRingingCall()` / `endCall()`.
+
+Set it with `adb shell cmd role add-role-holder android.app.role.DIALER es.papa.launcher` (it takes a few seconds to apply), or from admin mode → *Default phone app* → Activate. `telecom set-default-dialer` is only a temporary test override, so don't rely on it.
 
 **Guardian (anti-accident)**
 - The `AccessibilityService` sends the user back home if Settings, MIUI Security, Digital Wellbeing, the Play Store or the package installer is opened. Bluetooth pairing dialogs are still allowed

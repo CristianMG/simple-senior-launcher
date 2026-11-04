@@ -15,6 +15,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.CallEnd
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Dialpad
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -85,28 +87,41 @@ private fun CallScreen(info: CallInfo) {
     val photo = remember(caller.contactId) { Actions.contactPhoto(ctx, caller.contactId)?.asImageBitmap() }
     val ringing = info.phase == Phase.RINGING
     val title = caller.name ?: info.number.ifBlank { "Número oculto" }
+    val own = InCall.active // we are the phone app: no stock heads-up, DTMF available
+    var showKeys by remember { mutableStateOf(false) }
+    var typed by remember { mutableStateOf("") }
 
     Column(
         Modifier.fillMaxSize().background(Navy).padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         // Stock dialer shows a heads-up card at the top while ringing: keep that area empty.
-        Spacer(Modifier.height(if (ringing) 150.dp else 24.dp))
+        Spacer(Modifier.height(if (ringing && !own) 150.dp else 24.dp))
         Text(
-            if (ringing) "Te está llamando" else "En llamada con",
+            when {
+                ringing -> "Te está llamando"
+                !info.connected -> "Llamando a…"
+                else -> "En llamada con"
+            },
             color = Color(0xFFD0DCEB), fontSize = 30.sp,
         )
+        if (showKeys && !ringing) {
+            Text(title, color = Color.White, fontSize = 30.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            Text(typed.ifEmpty { " " }, color = Color.White, fontSize = 40.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+            DtmfPad(Modifier.weight(1f)) { ch -> typed = (typed + ch).takeLast(14); CallState.dtmf(ch) }
+        } else {
         Spacer(Modifier.height(12.dp))
-        Box(Modifier.size(if (ringing) 130.dp else 170.dp).clip(CircleShape).background(Color(0xFF2E5283)), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(if (ringing && !own) 130.dp else 170.dp).clip(CircleShape).background(Color(0xFF2E5283)), contentAlignment = Alignment.Center) {
             if (photo != null) Image(photo, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             else Text(title.take(1).uppercase(), color = Color.White, fontSize = 80.sp, fontWeight = FontWeight.Bold)
         }
         Spacer(Modifier.height(20.dp))
         Text(title, color = Color.White, fontSize = 44.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, lineHeight = 48.sp)
         if (caller.name != null) Text(info.number, color = Color(0xFFD0DCEB), fontSize = 26.sp)
-        if (!ringing) Timer(info.since)
+        if (!ringing && info.connected) key(info.since) { Timer(info.since) }
 
         Spacer(Modifier.weight(1f))
+        }
 
         if (ringing) {
             Button(
@@ -131,15 +146,32 @@ private fun CallScreen(info: CallInfo) {
                 Text("  No contestar", fontSize = 26.sp, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
             }
         } else {
-            var speaker by remember { mutableStateOf(CallState.isSpeaker(ctx)) }
-            Button(
-                onClick = { speaker = !speaker; CallState.setSpeaker(ctx, speaker) },
-                modifier = Modifier.fillMaxWidth().height(96.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = if (speaker) Color(0xFFFFC107) else Color.White),
-                shape = RoundedCornerShape(28.dp),
-            ) {
-                Icon(Icons.Filled.VolumeUp, null, Modifier.size(44.dp), tint = Navy)
-                Text(if (speaker) "  Altavoz: SÍ" else "  Altavoz: NO", fontSize = 26.sp, fontWeight = FontWeight.Bold, color = Navy)
+            val speaker = info.speaker
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = { CallState.setSpeaker(ctx, !speaker) },
+                    modifier = Modifier.weight(1f).height(96.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (speaker) Color(0xFFFFC107) else Color.White),
+                    shape = RoundedCornerShape(28.dp),
+                    contentPadding = PaddingValues(4.dp),
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Filled.VolumeUp, null, Modifier.size(36.dp), tint = Navy)
+                        Text(if (speaker) "Altavoz SÍ" else "Altavoz NO", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Navy, maxLines = 1, softWrap = false)
+                    }
+                }
+                if (own && info.connected) Button(
+                    onClick = { showKeys = !showKeys },
+                    modifier = Modifier.weight(1f).height(96.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = if (showKeys) Color(0xFFFFC107) else Color.White),
+                    shape = RoundedCornerShape(28.dp),
+                    contentPadding = PaddingValues(4.dp),
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(Icons.Filled.Dialpad, null, Modifier.size(36.dp), tint = Navy)
+                        Text(if (showKeys) "Ocultar" else "Teclado", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Navy, maxLines = 1, softWrap = false)
+                    }
+                }
             }
             Spacer(Modifier.height(24.dp))
             Button(
@@ -164,4 +196,21 @@ private fun Timer(since: Long) {
     LaunchedEffect(Unit) { while (true) { now = System.currentTimeMillis(); delay(1000) } }
     val s = ((now - since) / 1000).coerceAtLeast(0)
     Text("%d:%02d".format(s / 60, s % 60), color = Color.White, fontSize = 34.sp, modifier = Modifier.padding(top = 10.dp))
+}
+
+@Composable
+private fun DtmfPad(modifier: Modifier, onKey: (Char) -> Unit) {
+    Column(modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        listOf("123", "456", "789", "*0#").forEach { row ->
+            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                row.forEach { ch ->
+                    Box(
+                        Modifier.weight(1f).fillMaxHeight().clip(RoundedCornerShape(16.dp))
+                            .background(Color(0xFF2E5283)).clickable { onKey(ch) },
+                        contentAlignment = Alignment.Center,
+                    ) { Text(ch.toString(), color = Color.White, fontSize = 34.sp, fontWeight = FontWeight.Bold) }
+                }
+            }
+        }
+    }
 }

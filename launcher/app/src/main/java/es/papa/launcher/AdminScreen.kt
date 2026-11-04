@@ -46,6 +46,13 @@ fun AdminScreen(onExit: () -> Unit) {
     }
     val guardOn = remember(resumes) { Actions.isGuardEnabled(ctx) }
     val notifOn = remember(resumes) { Actions.isNotifEnabled(ctx) }
+    // Real (persistent) role, not a temporary adb override.
+    val dialerOn = remember(resumes) {
+        if (android.os.Build.VERSION.SDK_INT >= 29)
+            ctx.getSystemService(android.app.role.RoleManager::class.java)?.isRoleHeld(android.app.role.RoleManager.ROLE_DIALER) == true
+        else CallState.isDefaultDialer(ctx)
+    }
+    val roleReq = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { resumes++ }
 
     when (picker) {
         Picker.APP -> { AppPicker(onDone = { picker = Picker.NONE }); return }
@@ -69,6 +76,17 @@ fun AdminScreen(onExit: () -> Unit) {
         item { Header("Estado") }
         item {
             StatusRow("Guardián (accesibilidad)", guardOn) { Actions.openSettings(ctx, Settings.ACTION_ACCESSIBILITY_SETTINGS) }
+            StatusRow("App de teléfono predeterminada (pantalla de llamada)", dialerOn) {
+                val rm = if (android.os.Build.VERSION.SDK_INT >= 29) ctx.getSystemService(android.app.role.RoleManager::class.java) else null
+                if (rm != null && android.os.Build.VERSION.SDK_INT >= 29 && rm.isRoleAvailable(android.app.role.RoleManager.ROLE_DIALER)) {
+                    roleReq.launch(rm.createRequestRoleIntent(android.app.role.RoleManager.ROLE_DIALER))
+                } else {
+                    roleReq.launch(
+                        android.content.Intent(android.telecom.TelecomManager.ACTION_CHANGE_DEFAULT_DIALER)
+                            .putExtra(android.telecom.TelecomManager.EXTRA_CHANGE_DEFAULT_DIALER_PACKAGE_NAME, ctx.packageName)
+                    )
+                }
+            }
             StatusRow("Contador de mensajes (notificaciones)", notifOn) {
                 Actions.openSettings(ctx, "android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
             }

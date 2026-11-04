@@ -114,9 +114,9 @@ fun ScreenTop(title: String, onBack: () -> Unit) {
 // ---------- keypad ----------
 
 @Composable
-fun KeypadScreen(onBack: () -> Unit, onSave: (String) -> Unit, onRecent: () -> Unit) {
+fun KeypadScreen(initial: String = "", onBack: () -> Unit, onSave: (String) -> Unit, onRecent: () -> Unit) {
     val ctx = LocalContext.current
-    var number by remember { mutableStateOf("") }
+    var number by remember(initial) { mutableStateOf(initial.filter { it.isDigit() || it == '+' }) }
     val contacts = remember { ContactsRepo.all(ctx) }
     val match = remember(number) { ContactsRepo.findByNumber(contacts, number) }
     var missed by remember { mutableStateOf(CallLogRepo.missedNew(ctx)) }

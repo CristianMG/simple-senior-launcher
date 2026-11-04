@@ -87,7 +87,8 @@ class MainActivity : ComponentActivity() {
                     when (val s = screen.value) {
                         Screen.Admin ->
                             if (Prefs.isAdmin) AdminScreen(onExit = { Prefs.lockAdmin(); home() }) else home()
-                        Screen.Keypad -> KeypadScreen(
+                        Screen.Keypad, is Screen.Dial -> KeypadScreen(
+                            initial = (s as? Screen.Dial)?.number.orEmpty(),
                             onBack = home, onSave = { screen.value = Screen.AddContact(it) },
                             onRecent = { screen.value = Screen.Recent },
                         )
@@ -116,7 +117,9 @@ class MainActivity : ComponentActivity() {
     }
 
     /** Debug/QA: `am start ... --es open keypad|contacts|add`. */
-    private fun screenFrom(i: Intent?): Screen = when (i?.getStringExtra("open")) {
+    private fun screenFrom(i: Intent?): Screen = if (
+        (i?.action == Intent.ACTION_DIAL || i?.action == Intent.ACTION_VIEW)
+    ) Screen.Dial(i.data?.schemeSpecificPart.orEmpty()) else when (i?.getStringExtra("open")) {
         "keypad" -> Screen.Keypad
         "contacts" -> Screen.Contacts
         "recent" -> Screen.Recent
@@ -376,6 +379,7 @@ sealed interface Screen {
     data object Keypad : Screen
     data object Contacts : Screen
     data object Recent : Screen
+    data class Dial(val number: String) : Screen
     data class AddContact(val phone: String) : Screen
 }
 

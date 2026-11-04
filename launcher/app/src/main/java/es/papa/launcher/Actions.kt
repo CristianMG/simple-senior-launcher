@@ -55,6 +55,11 @@ object Actions {
 
     fun call(ctx: Context, phone: String) {
         val uri = Uri.fromParts("tel", phone, null)
+        if (CallState.isDefaultDialer(ctx) && ctx.checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED) {
+            // Default phone app may place any call, emergency numbers included.
+            val tm = ctx.getSystemService(Context.TELECOM_SERVICE) as android.telecom.TelecomManager
+            if (runCatching { tm.placeCall(uri, android.os.Bundle()) }.isSuccess) return
+        }
         val granted = ctx.checkSelfPermission(Manifest.permission.CALL_PHONE) == PackageManager.PERMISSION_GRANTED
         val i = Intent(if (granted) Intent.ACTION_CALL else Intent.ACTION_DIAL, uri)
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)

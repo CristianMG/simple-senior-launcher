@@ -51,7 +51,6 @@ class GuardService : AccessibilityService() {
         syncOverlay()
         val pkg = event.packageName?.toString() ?: return
         val cls = event.className?.toString().orEmpty()
-        if (pkg in INCALL_PKGS) CallState.onStockInCallShown(this)
         if (!Prefs.config.value.guardEnabled || Prefs.isAdmin) return
         if (pkg in BLOCKED && cls !in ALLOWED_CLASSES) {
             performGlobalAction(GLOBAL_ACTION_HOME)

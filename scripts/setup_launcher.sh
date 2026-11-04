@@ -17,6 +17,8 @@ try settings put secure accessibility_enabled 1
 try cmd notification allow_listener $P/$P.NotifService
 try dumpsys deviceidle whitelist +$P
 try cmd package set-home-activity $P/.MainActivity
+# Default phone app -> our InCallService owns the call UI (applies a few seconds later)
+try cmd role add-role-holder android.app.role.DIALER $P
 try appops set $P SYSTEM_ALERT_WINDOW allow
 # Comfort
 try settings put system accelerometer_rotation 0

@@ -67,7 +67,7 @@ adb shell dumpsys package es.papa.launcher | grep -E "(PHONE|CALL_LOG|CONTACTS).
 - Shade overlay: `dumpsys window windows | grep ty=2032`. Ask the user to try pulling the shade down.
 - Big call screen: ask someone to call, take a screenshot while it rings, and confirm `CallActivity` is resumed. The stock heads-up covers the top ~150 dp while ringing; that area is left empty on purpose.
 - Badges: send a WhatsApp → red dot. Missed call → red card in Phone → "seen" clears the dot.
-- Test the call screen with the phone **locked and screen off** too: the stock full-screen call UI arrives 1–3 s later than when unlocked. GuardService re-fronts `CallActivity` whenever a dialer/incallui window appears.
+- The launcher must be the **default phone app** (role DIALER) so only its `InCallService` UI shows. Covering the stock dialer from outside caused a flicker war on the lock screen. Check with `adb shell dumpsys role | grep -A1 role.DIALER` (it must list `es.papa.launcher`). `cmd role add-role-holder` works but applies a few seconds later; `telecom set-default-dialer` is only a temporary override that makes `defaultDialerPackage` look right.
 - **Never reinstall during a call**: check `adb shell dumpsys telephony.registry | grep mCallState` (0 = idle).
 
 ## 6. Hand-off checklist for the family
